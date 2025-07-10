@@ -303,13 +303,13 @@ If you use iSpatial_py in your research, please cite both:
 
 1. **The original iSpatial method:**
    ```
-   [Original iSpatial paper citation - please add the actual reference]
+   GitHub [https://github.com/Czh3/iSpatial.git]
    ```
 
 2. **This enhanced Python implementation:**
    ```
    iSpatial_py: Enhanced Python implementation of iSpatial with complete gene expression inference.
-   GitHub: https://github.com/[your-username]/[repository-name]
+   GitHub: [https://github.com/milliomics/iSpatial_py.git]
    ```
 
 ### When to cite what:
