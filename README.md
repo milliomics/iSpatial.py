@@ -312,19 +312,6 @@ If you use iSpatial_py in your research, please cite both:
    GitHub: [https://github.com/milliomics/iSpatial_py.git]
    ```
 
-### When to cite what:
-
-- **For the core integration methodology**: Cite the original iSpatial paper
-- **For complete gene expression inference** (expanding from ~1K to 10K+ genes): Cite this implementation
-- **For the Python codebase and enhanced features**: Cite this implementation
-
-### Example citation in papers:
-*"We used an enhanced Python implementation of iSpatial (GitHub: [your-repo]) that generates complete scRNA-seq expression profiles for spatial cells using k-nearest neighbor averaging, based on the original iSpatial method [original paper citation]."*
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
-
 ## Support
 
 For questions and support, please refer to the documentation or create an issue in the repository. 
