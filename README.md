@@ -227,6 +227,41 @@ result = infer_rPCA(
 - The package automatically handles gene intersection
 - Placeholder genes starting with "barcode_" are automatically removed
 
+## Data Preprocessing Recommendations
+
+For optimal integration results, we recommend preprocessing your data as follows:
+
+### Spatial RNA-seq Data (spRNA)
+- **Cell Size Normalization**: Normalize by cell area or volume to account for varying cell sizes
+- **Quality Control**: Remove cells with very low gene counts or outlier expression patterns
+- **Raw or Log-Transformed**: Can work with raw counts or log-transformed data
+
+```python
+# Example cell size normalization for spatial data
+spatial_adata.obs['cell_area'] = calculate_cell_area(spatial_coordinates)
+sc.pp.normalize_total(spatial_adata, target_sum=None)  # Normalize by cell size
+# Or manually: spatial_adata.X = spatial_adata.X / spatial_adata.obs['cell_area'].values[:, None]
+```
+
+### Single-cell RNA-seq Data (scRNA)
+- **CPM Normalization**: Counts per million normalization to standardize library sizes
+- **Quality Control**: Standard scRNA-seq QC (remove low-quality cells, doublets, etc.)
+- **Log Transformation**: Log1p transformation after normalization
+
+```python
+# Example CPM normalization for scRNA data
+sc.pp.normalize_total(scrna_adata, target_sum=1e6)  # CPM normalization
+sc.pp.log1p(scrna_adata)  # Log transformation
+
+# Alternative manual CPM
+# scrna_adata.X = (scrna_adata.X / scrna_adata.X.sum(axis=1)[:, None]) * 1e6
+```
+
+### General Preprocessing Notes
+- **Gene Filtering**: Remove genes expressed in very few cells
+- **Batch Effects**: If data comes from multiple batches, consider batch correction
+- **Consistent Processing**: Apply similar QC criteria to both datasets when possible
+
 ## Output Structure
 
 The enhanced spatial data includes:
@@ -264,7 +299,31 @@ The enhanced spatial data includes:
 
 ## Citation
 
-If you use iSpatial_py in your research, please cite the original iSpatial paper and this implementation.
+If you use iSpatial_py in your research, please cite both:
+
+1. **The original iSpatial method:**
+   ```
+   [Original iSpatial paper citation - please add the actual reference]
+   ```
+
+2. **This enhanced Python implementation:**
+   ```
+   iSpatial_py: Enhanced Python implementation of iSpatial with complete gene expression inference.
+   GitHub: https://github.com/[your-username]/[repository-name]
+   ```
+
+### When to cite what:
+
+- **For the core integration methodology**: Cite the original iSpatial paper
+- **For complete gene expression inference** (expanding from ~1K to 10K+ genes): Cite this implementation
+- **For the Python codebase and enhanced features**: Cite this implementation
+
+### Example citation in papers:
+*"We used an enhanced Python implementation of iSpatial (GitHub: [your-repo]) that generates complete scRNA-seq expression profiles for spatial cells using k-nearest neighbor averaging, based on the original iSpatial method [original paper citation]."*
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
 
 ## Support
 
