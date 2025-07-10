@@ -266,14 +266,6 @@ The enhanced spatial data includes:
 
 If you use iSpatial_py in your research, please cite the original iSpatial paper and this implementation.
 
-## License
-
-This implementation follows the same license terms as the original iSpatial R package.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
-
 ## Support
 
 For questions and support, please refer to the documentation or create an issue in the repository. 
