@@ -886,9 +886,9 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
     # Set figure parameters
     sc.set_figure_params(facecolor="white")
     
-    # Create large subplot grid: 4 rows x 4 columns
+    # Create large subplot grid: 4 rows x 4 columns with better spacing
     fig = plt.figure(figsize=figsize)
-    gs = fig.add_gridspec(4, 4, hspace=0.35, wspace=0.3)
+    gs = fig.add_gridspec(4, 4, hspace=0.45, wspace=0.7)
     
     # ========== ROW 1: UMAP VIEWS ==========
     ax_umap1 = fig.add_subplot(gs[0, 0])
@@ -929,7 +929,7 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
     # 3. UMAP: Clusters
     if cluster_key in adata.obs.columns and 'X_umap' in adata.obsm:
         sc.pl.umap(adata, color=cluster_key, title='UMAP: Leiden Clusters', 
-                  ax=ax_umap3, show=False, frameon=False, legend_loc='on data')
+                  ax=ax_umap3, show=False, frameon=False, legend_loc='right margin')
     
     # 4. Dataset Statistics
     ax_stats.axis('off')
@@ -984,7 +984,7 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
                              title='Cluster Composition (%)', rot=45)
         ax_composition.set_xlabel('Cluster')
         ax_composition.set_ylabel('Percentage')
-        ax_composition.legend(title='Caste', loc='upper right')
+        ax_composition.legend(title='Caste', bbox_to_anchor=(1.05, 1), loc='upper left')
     
     # ROW 3: CASTE-SPECIFIC SPATIAL ANALYSIS
     
@@ -1036,7 +1036,7 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
             detail_text.append(f"C{cluster}: {total:3d} | S:{soldier:3d}({s_pct:3.0f}%) F:{forager:3d}({f_pct:3.0f}%)")
         
         ax_summary.text(0.05, 0.95, '\n'.join(detail_text), 
-                       transform=ax_summary.transAxes, fontsize=10, 
+                       transform=ax_summary.transAxes, fontsize=9, 
                        verticalalignment='top', family='monospace')
     ax_summary.set_title('Cluster Breakdown', fontweight='bold')
     
@@ -1045,7 +1045,7 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
     # 13. Batch correction check
     if 'batch' in adata.obs.columns and 'X_umap' in adata.obsm:
         sc.pl.umap(adata, color='batch', title='Batch Correction Check', 
-                  ax=ax_batch_check, show=False, frameon=False, legend_loc='on data')
+                  ax=ax_batch_check, show=False, frameon=False, legend_loc='right margin')
     
     # 14. Spatial batch distribution
     if 'batch' in adata.obs.columns and 'spatial' in adata.obsm:
@@ -1076,7 +1076,7 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
         
     process_text.append(f"\n📈 Data Quality:")
     process_text.append(f"• PCs used: 50")
-    process_text.append(f"• Harmony theta: 2.0")
+    process_text.append(f"• Harmony theta: 3.0")
     process_text.append(f"• Clustering res: 0.2")
     
     ax_detailed_stats.text(0.05, 0.95, '\n'.join(process_text), 
@@ -1107,7 +1107,7 @@ def plot_all_in_one_comprehensive(adata, cluster_key='clusters', figsize=(24, 16
     
     # Add main title
     fig.suptitle('Complete Bee Brain Spatial Transcriptomics Analysis', 
-                fontsize=20, fontweight='bold', y=0.98)
+                fontsize=20, fontweight='bold', y=0.96)
     
     # Save if path specified
     if save_path:
