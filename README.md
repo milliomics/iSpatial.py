@@ -1,4 +1,4 @@
-# iSpatial_py: Python Implementation of iSpatial
+# iSpatial.py: Python Implementation of iSpatial
 
 A Python reimplementation of the iSpatial R package for integrating single-cell RNA sequencing (scRNA-seq) and spatial transcriptomics data to enhance spatial gene expression profiles.
 
