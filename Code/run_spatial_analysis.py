@@ -30,6 +30,91 @@ from spatial_analysis_tools import (
     add_leiden_clustering
 )
 
+def plot_forager_soldier_spatial_simple(adata, cluster_key='clusters', figsize=(20, 8), save_path=None):
+    """
+    Create a simple side-by-side spatial plot of Forager and Soldier colored by clusters.
+    
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Combined dataset with both Forager and Soldier data
+    cluster_key : str, optional
+        Key for clustering results (default: 'clusters')
+    figsize : tuple, optional
+        Figure size (default: (20, 8))
+    save_path : str, optional
+        Directory path to save plot. If None, don't save.
+    """
+    import matplotlib.pyplot as plt
+    import scanpy as sc
+    from pathlib import Path
+    
+    # Create save directory if specified
+    if save_path:
+        save_dir = Path(save_path)
+        save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Set figure parameters
+    sc.set_figure_params(facecolor="white")
+    
+    # Create side-by-side subplots
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    
+    # Separate by caste
+    adata_forager = adata[adata.obs["source"] == "Forager"]
+    adata_soldier = adata[adata.obs["source"] == "Soldier"]
+    
+    # Plot Forager spatial
+    if adata_forager.n_obs > 0:
+        sc.pl.embedding(adata_forager, basis="spatial", color=cluster_key,
+                       title=f'Forager Spatial Clusters ({adata_forager.n_obs:,} cells)',
+                       ax=axes[0], show=False, frameon=False, size=10)
+    else:
+        axes[0].text(0.5, 0.5, 'No Forager cells', ha='center', va='center',
+                    transform=axes[0].transAxes, fontsize=16)
+        axes[0].set_title("Forager Spatial Clusters")
+    
+    # Plot Soldier spatial
+    if adata_soldier.n_obs > 0:
+        sc.pl.embedding(adata_soldier, basis="spatial", color=cluster_key,
+                       title=f'Soldier Spatial Clusters ({adata_soldier.n_obs:,} cells)',
+                       ax=axes[1], show=False, frameon=False, size=10)
+    else:
+        axes[1].text(0.5, 0.5, 'No Soldier cells', ha='center', va='center',
+                    transform=axes[1].transAxes, fontsize=16)
+        axes[1].set_title("Soldier Spatial Clusters")
+    
+    # Add main title
+    n_clusters = len(adata.obs[cluster_key].unique()) if cluster_key in adata.obs.columns else 0
+    fig.suptitle(f'Spatial Clustering: Forager vs Soldier ({n_clusters} clusters)', 
+                fontsize=16, fontweight='bold', y=0.95)
+    
+    plt.tight_layout()
+    
+    # Save if path specified
+    if save_path:
+        filename = f"forager_soldier_spatial_clusters.png"
+        plt.savefig(save_dir / filename, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"  ✓ Saved Forager vs Soldier spatial plot: {filename}")
+        
+        # Get file size for reporting
+        file_path = save_dir / filename
+        if file_path.exists():
+            file_size_mb = file_path.stat().st_size / (1024*1024)
+            print(f"    File size: {file_size_mb:.1f} MB")
+    
+    plt.show()
+    
+    # Print summary
+    print(f"\n📋 Forager vs Soldier Spatial Summary:")
+    if adata_forager.n_obs > 0:
+        print(f"  • Forager: {adata_forager.n_obs:,} cells")
+    if adata_soldier.n_obs > 0:
+        print(f"  • Soldier: {adata_soldier.n_obs:,} cells")
+    if cluster_key in adata.obs.columns:
+        print(f"  • Clusters displayed: {n_clusters}")
+    print(f"  • High resolution: 300 DPI for publication quality")
+
 def main():
     """
     Main analysis function - modify the file paths below for your data.
@@ -41,22 +126,22 @@ def main():
     # MODIFY THESE PATHS FOR YOUR DATA
     # =================================================================
     
-    soldier_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/s39_col116_enhanced_merfish_full_Soldier_k30_scRNAstabilized_weight0.5_20250714.h5ad"
+    soldier_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/s39_col116_enhanced_merfish_full_Soldier_k30_scRNAstabilized_weight0.5_20250717.h5ad"
     
-    forager_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/f11_col116_enhanced_merfish_full_Forager_k30_scRNAstabilized_weight0.5_20250714.h5ad"
+    forager_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/f11_col116_enhanced_merfish_full_Forager_k30_scRNAstabilized_weight0.5_20250717.h5ad"
     
-    output_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/f11_s39_col_116_combined_soldier_forager_k30_scRNAstabilized_weight0.5_20250714_harmony.h5ad"
+    output_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/f11_s39_col_116_combined_soldier_forager_k30_scRNAstabilized_weight0.5_20250721_r1.0_harmony.h5ad"
     
     # IMAGE SAVE PATH - MODIFY THIS TO YOUR DESIRED DIRECTORY
-    save_images_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/analysis_plots"
+    save_images_path = "/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/analysis_plots_20250721"
     
     # Analysis parameters
     analysis_params = {
         'apply_harmony': True,
         'n_pcs': 50,
-        'harmony_theta': 3.0,
+        'harmony_theta': 2.0,
         'run_clustering': True,
-        'leiden_resolution': 0.2
+        'leiden_resolution': 1.0
     }
     
     # =================================================================
@@ -116,28 +201,43 @@ def main():
         plot_all_in_one_comprehensive(combined_data, cluster_key='clusters', save_path=save_images_path)
         
         # =================================================================
+        # CREATE SIMPLE FORAGER VS SOLDIER SPATIAL PLOT
+        # =================================================================
+        
+        print("\n🗺️  Creating Forager vs Soldier spatial comparison...")
+        print("  📐 Generating side-by-side spatial plots colored by clusters...")
+        
+        # Create the simple forager vs soldier spatial plot
+        plot_forager_soldier_spatial_simple(combined_data, cluster_key='clusters', save_path=save_images_path)
+        
+        # =================================================================
         # FINAL SUMMARY
         # =================================================================
         
         print(f"\n✅ Analysis completed successfully!")
         print(f"💾 Data saved to: {output_path}")
-        print(f"🖼️  Comprehensive plot saved to: {save_images_path}")
+        print(f"🖼️  Analysis plots saved to: {save_images_path}")
         
         # List saved images
         saved_images = list(Path(save_images_path).glob("*.png"))
         if saved_images:
-            print(f"📸 Saved comprehensive image:")
+            print(f"📸 Saved analysis images:")
             for img in sorted(saved_images):
                 print(f"  • {img.name}")
                 print(f"    Size: {img.stat().st_size / (1024*1024):.1f} MB")
         
         print(f"\n📋 What you got:")
-        print(f"  • 16 analysis panels in one image")
-        print(f"  • UMAP views (caste, batch, clusters)")
-        print(f"  • Spatial views (combined, by caste, by cluster)")
-        print(f"  • Statistical summaries and cluster breakdowns")
-        print(f"  • Technical details and methods")
-        print(f"  • Publication-ready 300 DPI PNG format")
+        print(f"  🔬 Comprehensive Analysis:")
+        print(f"    • 16 analysis panels in one comprehensive image")
+        print(f"    • UMAP views (caste, batch, clusters)")
+        print(f"    • Spatial views (combined, by caste, by cluster)")
+        print(f"    • Statistical summaries and cluster breakdowns")
+        print(f"    • Technical details and methods")
+        print(f"  🗺️  Spatial Comparison:")
+        print(f"    • Simple side-by-side Forager vs Soldier spatial plot")
+        print(f"    • Clusters colored consistently across both castes")
+        print(f"    • Clean, focused visualization for presentations")
+        print(f"  📐 All images: Publication-ready 300 DPI PNG format")
         
         print("\n" + "="*60)
         print("🎉 COMPREHENSIVE ANALYSIS COMPLETE!")
@@ -183,5 +283,8 @@ if __name__ == "__main__":
         print("  • combined_data.obsm['X_umap'] - UMAP coordinates")
         print("  • combined_data.obsm['X_pca_harmony'] or ['X_harmony'] - batch-corrected embeddings")
         print("  • combined_data.obsm['spatial'] - spatial coordinates")
+        print("\n🖼️  Generated Images:")
+        print("  • complete_bee_brain_analysis_clusters.png - Comprehensive 16-panel analysis")
+        print("  • forager_soldier_spatial_clusters.png - Simple Forager vs Soldier spatial comparison")
     else:
         print("\n❌ Analysis failed. Please check error messages above.") 
