@@ -71,20 +71,20 @@ combined_adata = combine_soldier_forager_with_clustering(
 ```mermaid
 graph TD
     %% Input Data
-    A[🧠 Soldier Spatial Data<br/>~100-1K genes] --> B{🔬 iSpatial Enhancement}
-    C[📊 Soldier scRNA Reference<br/>~10K+ genes] --> B
-    D[🧠 Forager Spatial Data<br/>~100-1K genes] --> E{🔬 iSpatial Enhancement}
-    F[📊 Forager scRNA Reference<br/>~10K+ genes] --> E
+    A[Soldier Spatial Data<br/>~100-1K genes] --> B[iSpatial Enhancement]
+    C[Soldier scRNA Reference<br/>~10K+ genes] --> B
+    D[Forager Spatial Data<br/>~100-1K genes] --> E[iSpatial Enhancement]
+    F[Forager scRNA Reference<br/>~10K+ genes] --> E
     
     %% Enhanced Data
-    B --> G[✨ Enhanced Soldier Data<br/>~10K+ genes<br/>Complete Transcriptome]
-    E --> H[✨ Enhanced Forager Data<br/>~10K+ genes<br/>Complete Transcriptome]
+    B --> G[Enhanced Soldier Data<br/>~10K+ genes<br/>Complete Transcriptome]
+    E --> H[Enhanced Forager Data<br/>~10K+ genes<br/>Complete Transcriptome]
     
     %% Integration Steps
-    G --> I[🎯 Harmony Batch Correction<br/>Remove Technical Differences]
+    G --> I[Harmony Batch Correction<br/>Remove Technical Differences]
     H --> I
-    I --> J[🧬 Leiden Clustering<br/>Identify Cell Types]
-    J --> K[📈 Combined Analysis<br/>Spatial Clusters + UMAP<br/>Publication-Ready Plots]
+    I --> J[Leiden Clustering<br/>Identify Cell Types]
+    J --> K[Combined Analysis<br/>Spatial Clusters + UMAP<br/>Publication-Ready Plots]
     
     %% Styling
     classDef inputData fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000
