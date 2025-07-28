@@ -70,16 +70,34 @@ combined_adata = combine_soldier_forager_with_clustering(
 
 ```mermaid
 graph TD
-    A[Soldier Spatial Data] --> B[iSpatial Enhancement]
-    C[Soldier scRNA Reference] --> B
-    D[Forager Spatial Data] --> E[iSpatial Enhancement]
-    F[Forager scRNA Reference] --> E
-    B --> G[Enhanced Soldier Data<br/>~10K+ genes]
-    E --> H[Enhanced Forager Data<br/>~10K+ genes]
-    G --> I[Harmony Batch Correction]
+    %% Input Data
+    A[🧠 Soldier Spatial Data<br/>~100-1K genes] --> B{🔬 iSpatial Enhancement}
+    C[📊 Soldier scRNA Reference<br/>~10K+ genes] --> B
+    D[🧠 Forager Spatial Data<br/>~100-1K genes] --> E{🔬 iSpatial Enhancement}
+    F[📊 Forager scRNA Reference<br/>~10K+ genes] --> E
+    
+    %% Enhanced Data
+    B --> G[✨ Enhanced Soldier Data<br/>~10K+ genes<br/>Complete Transcriptome]
+    E --> H[✨ Enhanced Forager Data<br/>~10K+ genes<br/>Complete Transcriptome]
+    
+    %% Integration Steps
+    G --> I[🎯 Harmony Batch Correction<br/>Remove Technical Differences]
     H --> I
-    I --> J[Leiden Clustering]
-    J --> K[Combined Analysis<br/>with Spatial Clusters]
+    I --> J[🧬 Leiden Clustering<br/>Identify Cell Types]
+    J --> K[📈 Combined Analysis<br/>Spatial Clusters + UMAP<br/>Publication-Ready Plots]
+    
+    %% Styling
+    classDef inputData fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000
+    classDef process fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000
+    classDef enhanced fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#000
+    classDef integration fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
+    classDef output fill:#fce4ec,stroke:#880e4f,stroke-width:3px,color:#000
+    
+    class A,C,D,F inputData
+    class B,E process
+    class G,H enhanced
+    class I,J integration
+    class K output
 ```
 
 ### Quick Start: Complete Workflow
