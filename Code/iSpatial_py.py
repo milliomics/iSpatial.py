@@ -257,24 +257,50 @@ def infer(
             n_core=n_core,
         )
 
-    genes_intersect = list(set(spRNA.var_names).intersection(scRNA.var_names))
-    if len(genes_intersect) < 10:
-        raise ValueError("Too few intersected genes between scRNA and spRNA.")
+    # Case-insensitive gene matching
+    sp_genes_lower = {gene.lower(): gene for gene in spRNA.var_names}
+    sc_genes_lower = {gene.lower(): gene for gene in scRNA.var_names}
+    
+    # Find intersecting genes (case-insensitive)
+    intersect_lower = set(sp_genes_lower.keys()) & set(sc_genes_lower.keys())
+    
+    # Create mapping from actual gene names to their case-insensitive matches
+    sp_to_intersect = {}
+    sc_to_intersect = {}
+    intersect_genes_sp = []
+    intersect_genes_sc = []
+    
+    for gene_lower in intersect_lower:
+        sp_gene = sp_genes_lower[gene_lower]
+        sc_gene = sc_genes_lower[gene_lower]
+        sp_to_intersect[sp_gene] = gene_lower
+        sc_to_intersect[sc_gene] = gene_lower
+        intersect_genes_sp.append(sp_gene)
+        intersect_genes_sc.append(sc_gene)
+    
+    if len(intersect_genes_sp) < 10:
+        raise ValueError(f"Too few intersected genes between scRNA and spRNA: {len(intersect_genes_sp)}")
+    
+    print(f"Found {len(intersect_genes_sp)} intersecting genes (case-insensitive)")
 
     # For integration, we work with intersected genes only
-    # But we'll enhance spRNA with ALL scRNA genes later
-    spRNA_subset = spRNA[:, genes_intersect].copy()
-    scRNA_subset = scRNA[:, genes_intersect].copy()
+    spRNA_subset = spRNA[:, intersect_genes_sp].copy()
+    scRNA_subset = scRNA[:, intersect_genes_sc].copy()
+    
+    # Rename genes to have consistent naming for concat
+    canonical_names = [sp_to_intersect[g] for g in intersect_genes_sp]
+    spRNA_subset.var_names = canonical_names
+    scRNA_subset.var_names = canonical_names
     
     adata = ad.concat([spRNA_subset, scRNA_subset], join="inner", label="batch", keys=["spatial", "scRNA"], index_unique=None)
 
     sc.pp.normalize_total(adata, target_sum=1e6)
     sc.pp.log1p(adata)
 
-    sc.pp.highly_variable_genes(adata, n_top_genes=len(genes_intersect), subset=False)
+    sc.pp.highly_variable_genes(adata, n_top_genes=len(canonical_names), subset=False)
 
     n_pcs_needed = max(dims) + 1
-    adata = run_harmony(adata, genes_intersect, npc=n_pcs_needed)
+    adata = run_harmony(adata, canonical_names, npc=n_pcs_needed)
 
     from sklearn.neighbors import NearestNeighbors
 
@@ -308,25 +334,68 @@ def infer(
         neigh_expr = scRNA_full_expr[neigh_original_idx]
         inferred_full[i_spatial, :] = neigh_expr.mean(axis=0)
 
+    # Create union of genes: spatial genes + scRNA genes, with scRNA taking priority for overlaps
     if include_all_sc_genes:
-        union_genes = scRNA.var_names.to_list()
-        enhanced_matrix = sparse.csr_matrix(inferred_full)
+        # Start with scRNA genes (these will be enhanced/inferred)
+        union_genes = list(scRNA.var_names)
+        
+        # Add spatial-only genes (case-insensitive check)
+        sc_genes_lower_set = set(sc_genes_lower.keys())
+        for sp_gene in spRNA.var_names:
+            if sp_gene.lower() not in sc_genes_lower_set:
+                union_genes.append(sp_gene)
+        
+        print(f"Union genes: {len(scRNA.var_names)} scRNA + {len(union_genes) - len(scRNA.var_names)} spatial-only = {len(union_genes)} total")
+        
+        # Create the enhanced matrix
+        enhanced_matrix_data = np.zeros((spRNA.n_obs, len(union_genes)))
+        
+        # Fill in scRNA-derived (inferred) expression for all scRNA genes
+        for i, gene in enumerate(scRNA.var_names):
+            enhanced_matrix_data[:, i] = inferred_full[:, i]
+        
+        # Fill in original spatial expression for spatial-only genes
+        spatial_only_start_idx = len(scRNA.var_names)
+        spatial_only_genes = union_genes[spatial_only_start_idx:]
+        
+        if sparse.issparse(spRNA.X):
+            spatial_expr = spRNA.X.toarray()
+        else:
+            spatial_expr = spRNA.X.copy()
+            
+        for i, gene in enumerate(spatial_only_genes):
+            sp_idx = spRNA.var_names.get_loc(gene)
+            enhanced_matrix_data[:, spatial_only_start_idx + i] = spatial_expr[:, sp_idx]
+            
+        enhanced_matrix = sparse.csr_matrix(enhanced_matrix_data)
+        
     else:
         # Only use intersected genes (old behavior)
-        union_genes = genes_intersect
-        gene_mask = [g in genes_intersect for g in scRNA.var_names]
-        inferred_subset = inferred_full[:, gene_mask]
-        enhanced_matrix = sparse.csr_matrix(inferred_subset)
+        union_genes = canonical_names
+        enhanced_matrix = sparse.csr_matrix(inferred_full[:, :len(canonical_names)])
 
     new_obs = spRNA.obs.copy()
     
     new_var = pd.DataFrame(index=union_genes)
     
+    # Copy var information from both datasets, giving priority to scRNA for overlapping genes
     for gene in union_genes:
-        if gene in spRNA.var_names:
-            original_idx = spRNA.var_names.get_loc(gene)
-            for col in spRNA.var.columns:
-                new_var.loc[gene, col] = spRNA.var.loc[gene, col]
+        # Check if gene exists in scRNA (case-insensitive)
+        sc_match = None
+        for sc_gene in scRNA.var_names:
+            if sc_gene.lower() == gene.lower():
+                sc_match = sc_gene
+                break
+        
+        if sc_match is not None:
+            # Use scRNA var info
+            for col in scRNA.var.columns:
+                new_var.loc[gene, col] = scRNA.var.loc[sc_match, col]
+        else:
+            # Use spatial var info for spatial-only genes
+            if gene in spRNA.var_names:
+                for col in spRNA.var.columns:
+                    new_var.loc[gene, col] = spRNA.var.loc[gene, col]
     
     enhanced_adata = ad.AnnData(
         X=enhanced_matrix,
@@ -336,46 +405,56 @@ def infer(
     
     enhanced_adata.layers[infered_layer] = enhanced_matrix.copy()
     
+    # Handle existing layers from spatial data
     for layer_name, layer_data in spRNA.layers.items():
         if layer_data.shape[1] == spRNA.n_vars:
-            if include_all_sc_genes:
-                expanded_layer = np.zeros((spRNA.n_obs, len(union_genes)))
-                for i, gene in enumerate(union_genes):
-                    if gene in spRNA.var_names:
-                        orig_idx = spRNA.var_names.get_loc(gene)
-                        if sparse.issparse(layer_data):
-                            expanded_layer[:, i] = layer_data[:, orig_idx].toarray().flatten()
-                        else:
-                            expanded_layer[:, i] = layer_data[:, orig_idx]
-                enhanced_adata.layers[layer_name] = sparse.csr_matrix(expanded_layer)
-        else:
-            continue
+            # Create expanded layer
+            expanded_layer = np.zeros((spRNA.n_obs, len(union_genes)))
+            
+            for i, gene in enumerate(union_genes):
+                # Find corresponding gene in spatial data (case-insensitive)
+                sp_match = None
+                for sp_gene in spRNA.var_names:
+                    if sp_gene.lower() == gene.lower():
+                        sp_match = sp_gene
+                        break
+                
+                if sp_match is not None:
+                    orig_idx = spRNA.var_names.get_loc(sp_match)
+                    if sparse.issparse(layer_data):
+                        expanded_layer[:, i] = layer_data[:, orig_idx].toarray().flatten()
+                    else:
+                        expanded_layer[:, i] = layer_data[:, orig_idx]
+                # Genes not in spatial keep zero values
+                        
+            enhanced_adata.layers[layer_name] = sparse.csr_matrix(expanded_layer)
     
     enhanced_adata.obsm = spRNA.obsm.copy()
     enhanced_adata.varm = {}
     enhanced_adata.uns = spRNA.uns.copy()
     
-    if include_all_sc_genes:
-        # Create expanded original expression matrix
-        original_expanded = np.zeros((spRNA.n_obs, len(union_genes)))
-        for i, gene in enumerate(union_genes):
-            if gene in spRNA.var_names:
-                orig_idx = spRNA.var_names.get_loc(gene)
-                if sparse.issparse(spRNA.X):
-                    original_expanded[:, i] = spRNA.X[:, orig_idx].toarray().flatten()
-                else:
-                    original_expanded[:, i] = spRNA.X[:, orig_idx]
-        enhanced_adata.layers['original_spatial'] = sparse.csr_matrix(original_expanded)
+    # Create original_spatial layer with proper gene mapping
+    original_expanded = np.zeros((spRNA.n_obs, len(union_genes)))
+    
+    if sparse.issparse(spRNA.X):
+        spatial_expr = spRNA.X.toarray()
     else:
-        # For intersected genes only
-        original_subset = np.zeros((spRNA.n_obs, len(union_genes)))
-        for i, gene in enumerate(union_genes):
-            orig_idx = spRNA.var_names.get_loc(gene)
-            if sparse.issparse(spRNA.X):
-                original_subset[:, i] = spRNA.X[:, orig_idx].toarray().flatten()
-            else:
-                original_subset[:, i] = spRNA.X[:, orig_idx]
-        enhanced_adata.layers['original_spatial'] = sparse.csr_matrix(original_subset)
+        spatial_expr = spRNA.X.copy()
+    
+    for i, gene in enumerate(union_genes):
+        # Find corresponding gene in spatial data (case-insensitive)
+        sp_match = None
+        for sp_gene in spRNA.var_names:
+            if sp_gene.lower() == gene.lower():
+                sp_match = sp_gene
+                break
+        
+        if sp_match is not None:
+            orig_idx = spRNA.var_names.get_loc(sp_match)
+            original_expanded[:, i] = spatial_expr[:, orig_idx]
+        # Genes not in spatial keep zero values
+    
+    enhanced_adata.layers['original_spatial'] = sparse.csr_matrix(original_expanded)
     
     return enhanced_adata
 
@@ -473,7 +552,7 @@ def infer_rPCA(
 
     # Merge & basic normalisation
     adata = ad.concat([spRNA, scRNA], join="inner", label="batch", keys=["spatial", "scRNA"], index_unique=None)
-    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.normalize_total(adata, target_sum=1e6)
     sc.pp.log1p(adata)
 
     sc.pp.pca(adata, n_comps=max(dims))

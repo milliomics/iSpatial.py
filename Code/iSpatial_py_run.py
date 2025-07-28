@@ -19,10 +19,10 @@ from iSpatial_py import infer  # or integrate_iSpatial
 
 # Default paths (can be overridden via CLI)
 
-DEFAULT_SPRNA = Path("data/whole_brain_merlin/Forager/Forager_sizenorm.h5ad")
-DEFAULT_SCRNA = Path("data/scRNAseq/sf_combined_cpm_log1p.h5ad")
-DEFAULT_OUT   = Path("output_ispatial/enhanced_merfish_full_Forager_k30_scRNAstabilized_weight0.5.h5ad")
-DEFAULT_PLOT_DIR = Path("output_ispatial/enhanced_plots_Forager_k30_scRNAstabilized_weight0.5")
+SPRNA_PATH = Path("/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/data/SvsF_col116/f11/f11_transformed.h5ad")
+SCRNA_PATH = Path("/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/data/scRNAseq/scRNA_forager_cpm_log1p.h5ad")
+OUT_PATH = Path("/Users/farah/Library/CloudStorage/GoogleDrive-qianluf2@illinois.edu/My Drive/Han_lab_Drive/p5_SvsF/code/ispatial/output_ispatial/f11/f11_ispatial.h5ad")
+
 
 
 def main() -> None:
@@ -30,27 +30,25 @@ def main() -> None:
     # Parse command-line arguments
     # -----------------------------------------------------------------------
     parser = argparse.ArgumentParser(description="Run iSpatial inference on MERFISH + scRNA data")
-    parser.add_argument("--spatial", type=Path, default=DEFAULT_SPRNA, help="Path to spatial (MERFISH) AnnData .h5ad file")
-    parser.add_argument("--scrna", type=Path,   default=DEFAULT_SCRNA, help="Path to scRNA-seq AnnData .h5ad file")
-    parser.add_argument("--out",   type=Path,   default=DEFAULT_OUT,   help="Destination .h5ad for enhanced output")
-    parser.add_argument("--plotdir", type=Path, default=DEFAULT_PLOT_DIR, help="Directory to save gene spatial plots (PNG)")
+    parser.add_argument("--spatial", type=Path, default=SPRNA_PATH, help="Path to spatial (MERFISH) AnnData .h5ad file")
+    parser.add_argument("--scrna", type=Path,   default=SCRNA_PATH, help="Path to scRNA-seq AnnData .h5ad file")
+    parser.add_argument("--out",   type=Path,   default=OUT_PATH,   help="Destination .h5ad for enhanced output")
     args = parser.parse_args()
 
-    SPRNA_PATH = args.spatial
-    SCRNA_PATH = args.scrna
-    OUT_PATH   = args.out
-    PLOT_DIR   = args.plotdir
+    spatial_path = args.spatial
+    scrna_path = args.scrna
+    output_path = args.out
 
     # -----------------------------------------------------------------------
     # 1. Load AnnData objects
     # -----------------------------------------------------------------------
-    if not SPRNA_PATH.exists():
-        raise FileNotFoundError(f"Spatial file not found: {SPRNA_PATH}")
-    if not SCRNA_PATH.exists():
-        raise FileNotFoundError(f"scRNA file not found: {SCRNA_PATH}")
+    if not spatial_path.exists():
+        raise FileNotFoundError(f"Spatial file not found: {spatial_path}")
+    if not scrna_path.exists():
+        raise FileNotFoundError(f"scRNA file not found: {scrna_path}")
 
-    spRNA = sc.read_h5ad(SPRNA_PATH)
-    scRNA = sc.read_h5ad(SCRNA_PATH)
+    spRNA = sc.read_h5ad(spatial_path)
+    scRNA = sc.read_h5ad(scrna_path)
 
     # -----------------------------------------------------------------------
     # 3. Run iSpatial inference
@@ -69,36 +67,11 @@ def main() -> None:
     # -----------------------------------------------------------------------
     # 3b. Save enhanced AnnData (MERFISH cells only)
     # -----------------------------------------------------------------------
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    enhanced.write_h5ad(OUT_PATH)
-
-    # -----------------------------------------------------------------------
-    # 4. Quick visualisation: plot an inferred gene
-    # -----------------------------------------------------------------------
-    gene_to_plot = "DopR2"  # change to any gene present in scRNA dataset
-
-    # Ensure plot directory exists
-    PLOT_DIR.mkdir(parents=True, exist_ok=True)
-
-    ax = sc.pl.spatial(
-        enhanced,
-        color=gene_to_plot,
-        layer="enhanced",
-        spot_size=25,
-        cmap="viridis",
-        show=False,
-    )
-    # sc.pl.spatial returns an Axes object list when show=False; grab the current figure
-    import matplotlib.pyplot as plt
-
-    fig = plt.gcf()
-    plot_path = PLOT_DIR / f"{gene_to_plot}_enhanced.png"
-    fig.savefig(plot_path, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved spatial plot to {plot_path}")
-
-    # Also add the enhanced expression as a layer for backward compatibility
-    enhanced.layers["enhanced"] = enhanced.X.copy()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    enhanced.write_h5ad(output_path)
+    
+    print(f"iSpatial inference completed. Enhanced data saved to {output_path}")
+    print(f"Enhanced expression available in layer: 'enhanced'")
 
 
 if __name__ == "__main__":
