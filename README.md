@@ -1,4 +1,4 @@
-# iSpatial.py: Python Implementation of iSpatial
+# iSpatial_py: Python Implementation of iSpatial
 
 A Python reimplementation of the iSpatial R package for integrating single-cell RNA sequencing (scRNA-seq) and spatial transcriptomics data to enhance spatial gene expression profiles.
 
@@ -25,6 +25,87 @@ iSpatial_py provides a comprehensive toolkit for spatial transcriptomics data an
 - **Flexible Inference Methods**: Multiple algorithms including harmony-based and PCA-based approaches
 - **Parameter Optimization**: Tools to recommend optimal parameters for your datasets
 
+## Complete Analysis Workflow
+
+This package provides a **two-step workflow** for comprehensive spatial transcriptomics analysis:
+
+### Step 1: iSpatial Enhancement (`iSpatial_py_run.py`)
+Enhance individual spatial datasets using scRNA-seq references to infer complete gene expression profiles.
+
+```bash
+# Run iSpatial enhancement for individual samples
+python iSpatial_py_run.py --spatial soldier_data.h5ad --scrna soldier_scrna.h5ad --out soldier_enhanced.h5ad
+python iSpatial_py_run.py --spatial forager_data.h5ad --scrna forager_scrna.h5ad --out forager_enhanced.h5ad
+```
+
+**What it does:**
+- Takes spatial data (~100-1000 genes) + scRNA-seq reference (~10,000+ genes)
+- Outputs enhanced spatial data with complete gene expression profiles
+- Each spatial cell receives expression values for ALL genes from scRNA-seq reference
+
+### Step 2: Harmony Batch Correction & Clustering (`spatial_analysis_tools.py`)
+Combine enhanced datasets from multiple samples/conditions with batch correction and clustering.
+
+```python
+from spatial_analysis_tools import combine_soldier_forager_with_clustering
+
+# Combine enhanced datasets with Harmony batch correction
+combined_adata = combine_soldier_forager_with_clustering(
+    soldier_path="soldier_enhanced.h5ad",
+    forager_path="forager_enhanced.h5ad",
+    output_path="combined_soldier_forager_harmony.h5ad",
+    apply_harmony=True,
+    run_clustering=True,
+    input_is_log_transformed=True  # Important: enhanced data is already log-transformed
+)
+```
+
+**What it does:**
+- Combines multiple enhanced spatial datasets
+- Applies Harmony batch correction to remove technical differences
+- Performs Leiden clustering to identify spatial cell types
+- Generates comprehensive visualization plots
+
+### Complete Pipeline Summary
+
+```mermaid
+graph TD
+    A[Soldier Spatial Data] --> B[iSpatial Enhancement]
+    C[Soldier scRNA Reference] --> B
+    D[Forager Spatial Data] --> E[iSpatial Enhancement]
+    F[Forager scRNA Reference] --> E
+    B --> G[Enhanced Soldier Data<br/>~10K+ genes]
+    E --> H[Enhanced Forager Data<br/>~10K+ genes]
+    G --> I[Harmony Batch Correction]
+    H --> I
+    I --> J[Leiden Clustering]
+    J --> K[Combined Analysis<br/>with Spatial Clusters]
+```
+
+### Quick Start: Complete Workflow
+
+```bash
+# Step 1: Enhance each dataset separately
+python iSpatial_py_run.py --spatial data/soldier.h5ad --scrna data/soldier_scrna.h5ad --out enhanced_soldier.h5ad
+python iSpatial_py_run.py --spatial data/forager.h5ad --scrna data/forager_scrna.h5ad --out enhanced_forager.h5ad
+
+# Step 2: Combine with batch correction (Python script)
+python -c "
+from spatial_analysis_tools import combine_soldier_forager_with_clustering, plot_complete_analysis_results
+
+# Combine and analyze
+adata = combine_soldier_forager_with_clustering(
+    'enhanced_soldier.h5ad', 
+    'enhanced_forager.h5ad',
+    output_path='final_combined_analysis.h5ad',
+    input_is_log_transformed=True
+)
+
+# Generate comprehensive plots
+plot_complete_analysis_results(adata, save_path='analysis_plots/')
+"
+```
+
 ## Installation
 
 ### Prerequisites
@@ -45,6 +126,11 @@ pip install scanpy anndata numpy scipy pandas scikit-learn harmonypy
 
 ## Quick Start
 
+### For Complete Workflow (Recommended)
+See the **Complete Analysis Workflow** section above for the two-step pipeline combining iSpatial enhancement with Harmony batch correction.
+
+### For Basic iSpatial Enhancement Only
+
 ```python
 import scanpy as sc
 import anndata as ad
@@ -64,6 +150,16 @@ enhanced_spatial = infer(
 
 # Access enhanced expression
 enhanced_expression = enhanced_spatial.layers["enhanced"]
+```
+
+### For Command Line Usage
+
+```bash
+# Enhance a single spatial dataset
+python iSpatial_py_run.py \
+    --spatial path/to/spatial.h5ad \
+    --scrna path/to/scrna_reference.h5ad \
+    --out path/to/enhanced_output.h5ad
 ```
 
 ## Main Functions
@@ -118,7 +214,93 @@ Recommends optimal k values for neighbor-based inference.
 #### `sparse_cor(x)`
 Computes correlation matrix for sparse gene expression data.
 
+## Spatial Analysis Tools Functions (`spatial_analysis_tools.py`)
+
+### Dataset Combination and Batch Correction
+
+#### `combine_soldier_forager_datasets(soldier_path, forager_path, **kwargs)`
+Combines enhanced spatial datasets with optional Harmony batch correction.
+
+**Parameters:**
+- `soldier_path`: Path to enhanced soldier h5ad file
+- `forager_path`: Path to enhanced forager h5ad file  
+- `output_path`: Path to save combined dataset (optional)
+- `apply_harmony`: Whether to apply Harmony batch correction (default: True)
+- `input_is_log_transformed`: Whether input data is already log-transformed (default: True)
+- `n_pcs`: Number of principal components for Harmony (default: 30)
+- `harmony_theta`: Harmony theta parameter (default: 2.0)
+
+#### `combine_soldier_forager_with_clustering(soldier_path, forager_path, **kwargs)`
+Complete pipeline: combines datasets, applies Harmony, and performs Leiden clustering.
+
+**Additional Parameters:**
+- `run_clustering`: Whether to run Leiden clustering (default: True)
+- `leiden_resolution`: Resolution for Leiden clustering (default: 0.2)
+
+**Returns:** Combined AnnData object with batch correction and clustering results
+
+### Visualization Functions
+
+#### `plot_complete_analysis_results(adata, **kwargs)`
+Creates comprehensive 16-panel visualization including UMAP, spatial plots, and statistics.
+
+#### `plot_spatial_clusters(adata, **kwargs)`
+Generates spatial cluster visualizations for combined and individual datasets.
+
+#### `plot_batch_correction_results(adata, **kwargs)`
+Visualizes batch correction effectiveness and clustering results.
+
+#### `analyze_combined_data(adata, **kwargs)`
+Provides detailed analysis summary with statistics and optional plots.
+
+### Key Parameters for Log-Transformed Data
+**Important:** When using enhanced data from `iSpatial_py_run.py`, always set:
+```python
+input_is_log_transformed=True
+```
+This prevents double normalization/transformation that can corrupt results.
+
 ## Usage Examples
+
+### Complete Two-Step Workflow (Recommended)
+
+```python
+# ===== STEP 1: iSpatial Enhancement =====
+# Run via command line for each sample:
+# python iSpatial_py_run.py --spatial soldier_spatial.h5ad --scrna soldier_scrna.h5ad --out soldier_enhanced.h5ad
+# python iSpatial_py_run.py --spatial forager_spatial.h5ad --scrna forager_scrna.h5ad --out forager_enhanced.h5ad
+
+# ===== STEP 2: Harmony Batch Correction & Clustering =====
+from spatial_analysis_tools import combine_soldier_forager_with_clustering, plot_complete_analysis_results
+
+# Combine enhanced datasets with full pipeline
+combined_adata = combine_soldier_forager_with_clustering(
+    soldier_path="soldier_enhanced.h5ad",
+    forager_path="forager_enhanced.h5ad", 
+    output_path="final_combined_analysis.h5ad",
+    apply_harmony=True,
+    run_clustering=True,
+    leiden_resolution=0.2,
+    harmony_theta=2.0,
+    input_is_log_transformed=True  # Critical: enhanced data is already log-transformed
+)
+
+# Generate comprehensive analysis plots
+plot_complete_analysis_results(
+    combined_adata,
+    cluster_key='clusters',
+    save_path='analysis_plots/'
+)
+
+# Access results
+print(f"Total cells: {combined_adata.n_obs}")
+print(f"Total genes: {combined_adata.n_vars}")
+print(f"Clusters found: {len(combined_adata.obs['clusters'].unique())}")
+
+# Cluster composition
+cluster_stats = combined_adata.obs.groupby(['clusters', 'source']).size().unstack(fill_value=0)
+print(cluster_stats)
+```
 
 ### Basic Integration
 
@@ -297,20 +479,30 @@ The enhanced spatial data includes:
 - Enable expression stabilization with `correct_spRNA=True`
 - Adjust integration dimensions
 
-## Citation
+### Two-Step Workflow Issues
 
-If you use iSpatial_py in your research, please cite both:
+**No difference between `input_is_log_transformed=True` and `False`**
+- This indicates your input data may not be properly prepared
+- Verify that Step 1 (iSpatial enhancement) completed successfully
+- Check that enhanced files contain the expected gene counts
 
-1. **The original iSpatial method:**
-   ```
-   GitHub [https://github.com/Czh3/iSpatial.git]
-   ```
+**Batch correction not working**
+- Ensure `input_is_log_transformed=True` when using enhanced data from `iSpatial_py_run.py`
+- Verify that both datasets have similar cell counts and gene expression ranges
+- Try adjusting `harmony_theta` parameter (lower values = less correction)
 
-2. **This enhanced Python implementation:**
-   ```
-   iSpatial_py: Enhanced Python implementation of iSpatial with complete gene expression inference.
-   GitHub: [https://github.com/milliomics/iSpatial_py.git]
-   ```
+**Clustering gives too many/few clusters**
+- Adjust `leiden_resolution` parameter (higher = more clusters, lower = fewer clusters)
+- Typical range: 0.1-1.0, start with 0.2-0.5
+
+**Visualization plots are empty or incorrect**
+- Check that spatial coordinates exist in `.obsm['spatial']`
+- Verify that clustering completed successfully (`'clusters'` in `.obs`)
+- Ensure UMAP was computed (should happen automatically with Harmony)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
 
 ## Support
 
